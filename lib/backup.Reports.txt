@@ -1,0 +1,84 @@
+try {
+      setState(() {
+        // Set times to null to show loading state
+        _sunrise = null;
+        _sunset = null;
+        _solarNoon = null;
+      });
+
+      var location = await _getLocation();
+      double latitude = location.latitude;
+      double longitude = location.longitude;
+      var date = DateTime.now();
+      // Format the date as YYYY-MM-DD
+      final formattedDate =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      try {
+        // Try API first
+        // Build the request URI
+        final uri = Uri.parse(
+          'https://api.sunrisesunset.io/json?lat=$latitude&lng=$longitude&date=$formattedDate',
+        );
+
+        // Set a timeout for the HTTP request
+        final response = await http
+            .get(uri)
+            .timeout(
+              const Duration(seconds: 5),
+              onTimeout: () {
+                throw TimeoutException('Network request timed out');
+              },
+            );
+
+        if (response.statusCode != 200) {
+          throw Exception(
+            'Failed to fetch sun times: HTTP ${response.statusCode}',
+          );
+        }
+
+        // Decode the JSON response
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        final results = json['results'] as Map<String, dynamic>;
+
+        // Extract the date string (API returns 'YYYY-MM-DD')
+        final dateStr = results['date'] as String;
+
+        // Parse each time into a DateTime
+        final sunrise = _parseTime(dateStr, results['sunrise'] as String);
+        final sunset = _parseTime(dateStr, results['sunset'] as String);
+        final solarNoon = _parseTime(dateStr, results['solar_noon'] as String);
+
+        setState(() {
+          _sunrise = sunrise;
+          _sunset = sunset;
+          _solarNoon = solarNoon;
+        });
+      } catch (e) {
+        debugPrint('API error: $e - Using fallback calculation');
+
+        // Fallback: Calculate approximate sun times
+        final fallbackTimes = _calculateApproximateSunTimes(
+          latitude,
+          longitude,
+          date,
+        );
+
+        setState(() {
+          _sunrise = fallbackTimes['sunrise'];
+          _sunset = fallbackTimes['sunset'];
+          _solarNoon = fallbackTimes['solarNoon'];
+        });
+      }
+    } catch (e) {
+      debugPrint('Error in _getSunTimesToday: $e');
+
+      // Show error state
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to get sun times: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
