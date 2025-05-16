@@ -7,6 +7,8 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -28,14 +30,11 @@ class _SettingsPageState extends State<SettingsPage> {
     _initializeSettings();
   }
 
+  /// Fetches sun times data for the next 30 days and saves it to a file.
   Future<Map<String, dynamic>> saveNewSunTimes() async {
     var date = DateTime.now();
-
-    // Format date in YYYY-MM-DD format
     var dateStart =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
-    // Create date 30 days from today
     var endDate = date.add(const Duration(days: 30));
     var dateEnd =
         "${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}";
@@ -43,32 +42,23 @@ class _SettingsPageState extends State<SettingsPage> {
         "https://api.sunrisesunset.io/json?lat=$_latitude&lng=$_longitude&date_start=$dateStart&date_end=$dateEnd&formatted=0";
     final response = await http.get(Uri.parse(url));
 
-    print("Response for month: ${response.body}");
-
     if (response.statusCode != 200) {
       throw Exception('Failed to load sun times');
     }
 
     final dir = await getDownloadsDirectory();
     final file = File(path.join(dir!.path, 'SunriseTimes.json'));
-    file.writeAsString(response.body);
-
-    // Parse the response body as JSON
+    await file.writeAsString(response.body);
 
     return jsonDecode(response.body);
   }
 
+  /// Initializes app settings: permissions, reschedule time, and location.
   Future<void> _initializeSettings() async {
     setState(() => _isLoading = true);
-
     try {
-      // Request notification permissions first
       await _requestNotificationPermission();
-
-      // Load reschedule time from settings file
       await _loadRescheduleTime();
-
-      // Try to get location last (since it might fail or take time)
       try {
         final location = await _getLocation();
         setState(() {
@@ -76,8 +66,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _longitude = location.longitude;
         });
       } catch (e) {
-        debugPrint('Location error: ${e.toString()}');
-        // Don't rethrow - continue even if location fails
+        // Continue even if location fails
       }
     } catch (e) {
       _showErrorSnackBar('Failed to initialize settings: ${e.toString()}');
@@ -86,42 +75,28 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  // Load the notification reschedule time
   Future<void> _loadRescheduleTime() async {
     final minutes = await NotificationController.getRescheduleMinutes();
-    setState(() {
-      _rescheduleMinutes = minutes;
-    });
+    setState(() => _rescheduleMinutes = minutes);
   }
 
-  // Save the notification reschedule time
   Future<void> _saveRescheduleTime(int minutes) async {
     await NotificationController.setRescheduleMinutes(minutes);
-    setState(() {
-      _rescheduleMinutes = minutes;
-    });
+    setState(() => _rescheduleMinutes = minutes);
     _showSuccessSnackBar(
       'Notification reschedule time set to $minutes minutes',
     );
   }
 
-  // Request notification permission
   Future<void> _requestNotificationPermission() async {
     final isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
-      // Request permission
       await AwesomeNotifications().requestPermissionToSendNotifications();
-      debugPrint('Notification permission requested');
-    } else {
-      debugPrint('Notification permission already granted');
     }
   }
 
   void _listNotifications() {
     AwesomeNotifications().listScheduledNotifications().then((notifications) {
-      for (var notification in notifications) {
-        print('Notification ID: ${notification.schedule}');
-      }
       _showSuccessSnackBar(
         '${notifications.length} notifications listed in console',
       );
@@ -130,19 +105,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _cancelAllNotifications() {
     AwesomeNotifications().cancelAllSchedules();
-    print("all notifications cancelled");
   }
 
   Future<Position> _getLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        // Show dialog asking user to enable location services
         bool enableService = await _showEnableLocationDialog();
         if (enableService) {
-          // Open location settings
           await Geolocator.openLocationSettings();
-          // Check again if location is enabled after returning from settings
           serviceEnabled = await Geolocator.isLocationServiceEnabled();
           if (!serviceEnabled) {
             throw Exception('Location services are still disabled.');
@@ -163,98 +134,81 @@ class _SettingsPageState extends State<SettingsPage> {
         throw Exception('Location permissions are permanently denied.');
       }
 
-      // Always get current position with high accuracy
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5), // Reduced timeout
+        timeLimit: const Duration(seconds: 5),
       );
-
-      // Store the precise coordinates in state
       setState(() {
         _latitude = position.latitude;
         _longitude = position.longitude;
       });
-
       return position;
     } catch (e) {
-      // Try with last known position if getting current position fails
-      try {
-        final lastPosition = await Geolocator.getLastKnownPosition();
-        if (lastPosition != null) {
-          // Store the last known coordinates in state
-          setState(() {
-            _latitude = lastPosition.latitude;
-            _longitude = lastPosition.longitude;
-          });
-          return lastPosition;
-        }
-      } catch (_) {
-        // If even that fails, rethrow the original exception
+      final lastPosition = await Geolocator.getLastKnownPosition();
+      if (lastPosition != null) {
+        setState(() {
+          _latitude = lastPosition.latitude;
+          _longitude = lastPosition.longitude;
+        });
+        return lastPosition;
       }
       rethrow;
     }
   }
 
-  // Show a dialog asking the user to enable location services
   Future<bool> _showEnableLocationDialog() async {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Location Services Disabled'),
-              content: const Text(
-                'Location services are disabled. The app needs your location to '
-                'calculate sunrise and sunset times. Please enable location services.',
+          builder:
+              (context) => AlertDialog(
+                title: const Text(
+                  'Location Services Disabled',
+                  style: TextStyle(color: Colors.black),
+                ),
+                content: const Text(
+                  'Location services are disabled. The app needs your location to '
+                  'calculate sunrise and sunset times. Please enable location services.',
+                  style: TextStyle(color: Colors.black),
+                ),
+                actions: [
+                  TextButton(
+                    child: const Text(
+                      'CANCEL',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('ENABLE LOCATION'),
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ],
               ),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('CANCEL'),
-                  onPressed: () {
-                    Navigator.of(context).pop(false);
-                  },
-                ),
-                FilledButton(
-                  child: const Text('ENABLE LOCATION'),
-                  onPressed: () {
-                    Navigator.of(context).pop(true);
-                  },
-                ),
-              ],
-            );
-          },
         ) ??
         false;
   }
 
   DateTime _parseDateTime(String dateStr, String timeStr) {
-    // Convert 12-hour format to 24-hour format
     bool isPM = timeStr.contains('PM');
     timeStr = timeStr.replaceAll(' AM', '').replaceAll(' PM', '');
-
     List<String> timeParts = timeStr.split(':');
     int hours = int.parse(timeParts[0]);
 
-    // Adjust hours for PM
-    if (isPM && hours != 12) {
-      hours += 12;
-    }
-    // Adjust for 12 AM
-    if (!isPM && hours == 12) {
-      hours = 0;
-    }
+    if (isPM && hours != 12) hours += 12;
+    if (!isPM && hours == 12) hours = 0;
 
     timeStr =
         '${hours.toString().padLeft(2, '0')}:${timeParts[1]}:${timeParts[2]}';
-
-    // Combine date and time
-    String dateTimeStr = '${dateStr}T$timeStr';
-    return DateTime.parse(dateTimeStr);
+    return DateTime.parse('${dateStr}T$timeStr');
   }
 
   Future<void> _refreshNotifications() async {
     setState(() => _isLoading = true);
-
     try {
       if (_latitude == null || _longitude == null) {
         throw Exception('Location not available. Please try again.');
@@ -262,55 +216,38 @@ class _SettingsPageState extends State<SettingsPage> {
 
       _cancelAllNotifications();
       var data = await saveNewSunTimes();
-      // Process the API response data
       List<dynamic> results = data['results'];
-      print("result type : ${results.runtimeType}");
       if (results.isEmpty) {
         throw Exception('No sun times data available');
       }
 
-      _showSuccessSnackBar(
-        "Setting Notifications For Next 30 Days, Please Wait...",
-      );
-
-      for (int i = 0; i < results.length; i++) {
-        var dayData = results[i];
-
-        // Create DateTime objects for the key times
+      _showSuccessSnackBar("Setting Notifications For Next 30 Days...");
+      for (var dayData in results) {
         final dateStr = dayData['date'];
         final sunriseStr = dayData['sunrise'];
         final sunsetStr = dayData['sunset'];
         final solarNoonStr = dayData['solar_noon'];
 
-        // Parse the date and times
         DateTime sunriseTime = _parseDateTime(dateStr, sunriseStr);
         DateTime sunsetTime = _parseDateTime(dateStr, sunsetStr);
         DateTime solarNoonTime = _parseDateTime(dateStr, solarNoonStr);
 
         _scheduleNotification(
           sunriseTime,
-          "Sunrise Time:$sunsetTime",
+          "Sunrise Time:$sunriseTime",
           "Please Chant The Following Mantra For Morning",
         );
-
         _scheduleNotification(
           solarNoonTime,
           "Solar Noon Time:$solarNoonTime",
           "Please Chant The Following Mantra For Afternoon",
         );
-
         _scheduleNotification(
           sunsetTime,
           "Sunset Time:$sunsetTime",
           "Please Chant The Following Mantra For Evening",
         );
-
-        print('Sunrise: $sunriseTime');
-        print('Sunset: $sunsetTime');
-        print('Solar Noon: $solarNoonTime');
-      } // Schedule notification for 2 minutes in the future
-
-      // Just show a success message instead of trying to fetch sun times
+      }
       _showSuccessSnackBar('All notifications cancelled and rescheduled');
     } catch (e) {
       _showErrorSnackBar('Failed to refresh notifications: ${e.toString()}');
@@ -320,15 +257,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _sendTestNotification() {
-    // Schedule time for 1 minute from now
     final scheduledTime = DateTime.now().add(const Duration(minutes: 1));
     final utcScheduledTime = scheduledTime.toUtc();
 
-    print(
-      'Scheduling test notification in UTC: ${utcScheduledTime.toString()}',
-    );
-
-    // Create a test notification that will show after 1 minute
     AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: 999,
@@ -342,96 +273,88 @@ class _SettingsPageState extends State<SettingsPage> {
         preciseAlarm: true,
       ),
     );
-
     _showSuccessSnackBar('Test notification scheduled for 1 minute from now');
   }
 
   void _showSuccessSnackBar(String message) {
+    final theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: TextStyle(color: theme.colorScheme.onSurface),
+        ),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: theme.colorScheme.surface,
       ),
     );
   }
 
   void _showErrorSnackBar(String message) {
+    final theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: TextStyle(color: theme.colorScheme.onError),
+        ),
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: theme.colorScheme.error,
       ),
     );
   }
 
   void _scheduleNotification(DateTime sTime, String title, String body) {
-    try {
-      final notificationId = _id!;
-      _id = notificationId + 1;
+    final notificationId = _id!;
+    _id = notificationId + 1;
+    final utcTime = sTime.toUtc();
 
-      // Convert to UTC to avoid timezone issues
-      final utcTime = sTime.toUtc();
-      print('Scheduling notification in UTC: ${utcTime.toString()}');
-
-      AwesomeNotifications()
-          .createNotification(
-            content: NotificationContent(
-              id: notificationId,
-              channelKey: 'basic_channel',
-              title: title,
-              body: body,
-            ),
-            schedule: NotificationCalendar.fromDate(
-              date: utcTime,
-              preciseAlarm: true,
-            ),
-          )
-          .then((_) {
-            print(
-              'Notification scheduled successfully for $sTime with id $notificationId',
-            );
-          })
-          .catchError((error) {
-            print('Error scheduling notification: $error');
-          });
-    } catch (e) {
-      print('Exception when scheduling notification: $e');
-    }
+    AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: notificationId,
+        channelKey: 'basic_channel',
+        title: title,
+        body: body,
+      ),
+      schedule: NotificationCalendar.fromDate(
+        date: utcTime,
+        preciseAlarm: true,
+      ),
+    );
   }
 
   void _showRescheduleDialog() {
     int tempMinutes = _rescheduleMinutes;
-
     showDialog(
       context: context,
       builder:
           (context) => StatefulBuilder(
             builder:
                 (context, setDialogState) => AlertDialog(
-                  title: const Text('Set Reschedule Time'),
+                  title: const Text(
+                    'Set Reschedule Time',
+                    style: TextStyle(color: Colors.black),
+                  ),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'When notifications are dismissed, they will reappear after:',
+                        style: TextStyle(color: Colors.black),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$tempMinutes minutes',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Center(
+                        child: Text(
+                          '$tempMinutes minutes',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
-                        ],
+                        ),
                       ),
                       Slider(
                         value: tempMinutes.toDouble(),
@@ -439,24 +362,30 @@ class _SettingsPageState extends State<SettingsPage> {
                         max: 60,
                         divisions: 59,
                         label: '$tempMinutes minutes',
-                        onChanged: (value) {
-                          setDialogState(() {
-                            tempMinutes = value.round();
-                          });
-                        },
+                        onChanged:
+                            (value) => setDialogState(
+                              () => tempMinutes = value.round(),
+                            ),
                       ),
                     ],
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('CANCEL'),
+                      child: const Text(
+                        'CANCEL',
+                        style: TextStyle(color: Colors.black),
+                      ),
                     ),
                     FilledButton(
                       onPressed: () {
                         _saveRescheduleTime(tempMinutes);
                         Navigator.pop(context);
                       },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                      ),
                       child: const Text('SAVE'),
                     ),
                   ],
@@ -470,14 +399,18 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Cancel All Notifications'),
+            title: const Text(
+              'Cancel All Notifications',
+              style: TextStyle(color: Colors.black),
+            ),
             content: const Text(
               'Are you sure you want to cancel all scheduled notifications?',
+              style: TextStyle(color: Colors.black),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('NO'),
+                child: const Text('NO', style: TextStyle(color: Colors.black)),
               ),
               FilledButton(
                 onPressed: () {
@@ -485,8 +418,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   Navigator.pop(context);
                   _showSuccessSnackBar('All notifications cancelled');
                 },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('YES'),
-                style: FilledButton.styleFrom(backgroundColor: Colors.red),
               ),
             ],
           ),
@@ -495,18 +431,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(
+          'Settings',
+          style: TextStyle(color: theme.appBarTheme.foregroundColor),
+        ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: colorScheme.surface,
+        backgroundColor: theme.appBarTheme.backgroundColor,
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                child: CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                ),
+              )
               : RefreshIndicator(
                 onRefresh: _initializeSettings,
                 child: CustomScrollView(
@@ -517,6 +462,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         delegate: SliverChildListDelegate([
                           // Location Status Card
                           Card(
+                            color: Colors.white,
                             margin: const EdgeInsets.only(bottom: 16),
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
@@ -525,9 +471,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.location_on,
-                                        color: colorScheme.primary,
+                                        color: Colors.black,
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
@@ -535,7 +481,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: colorScheme.onSurface,
+                                          color: Colors.black,
                                         ),
                                       ),
                                     ],
@@ -544,8 +490,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                   if (_latitude != null && _longitude != null)
                                     RichText(
                                       text: TextSpan(
-                                        style: TextStyle(
-                                          color: colorScheme.onSurface,
+                                        style: const TextStyle(
+                                          color: Colors.black,
                                         ),
                                         children: [
                                           const TextSpan(
@@ -562,20 +508,23 @@ class _SettingsPageState extends State<SettingsPage> {
                                       ),
                                     )
                                   else
-                                    Text(
+                                    const Text(
                                       'Location not available',
-                                      style: TextStyle(
-                                        color: colorScheme.error,
-                                      ),
+                                      style: TextStyle(color: Colors.black),
                                     ),
                                   const SizedBox(height: 8),
                                   FilledButton.icon(
                                     onPressed: _refreshNotifications,
-                                    icon: const Icon(Icons.refresh),
+                                    icon: const Icon(
+                                      Icons.refresh,
+                                      color: Colors.white,
+                                    ),
                                     label: const Text(
                                       'Schedule Sun Notifications',
+                                      style: TextStyle(color: Colors.white),
                                     ),
                                     style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.black,
                                       minimumSize: const Size(
                                         double.infinity,
                                         44,
@@ -586,9 +535,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                             ),
                           ),
-
                           // Notification Settings Card
                           Card(
+                            color: Colors.white,
                             margin: const EdgeInsets.only(bottom: 16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,9 +546,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                   padding: const EdgeInsets.all(16.0),
                                   child: Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.notifications_active,
-                                        color: colorScheme.primary,
+                                        color: Colors.black,
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
@@ -607,34 +556,50 @@ class _SettingsPageState extends State<SettingsPage> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: colorScheme.onSurface,
+                                          color: Colors.black,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const Divider(height: 1),
+                                const Divider(height: 1, color: Colors.black),
                                 ListTile(
-                                  leading: const Icon(Icons.timer),
-                                  title: const Text('Reschedule Time'),
-                                  subtitle: Text('$_rescheduleMinutes minutes'),
+                                  leading: const Icon(
+                                    Icons.timer,
+                                    color: Colors.black,
+                                  ),
+                                  title: const Text(
+                                    'Reschedule Time',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                  subtitle: Text(
+                                    '$_rescheduleMinutes minutes',
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
                                   onTap: _showRescheduleDialog,
                                 ),
-                                const Divider(height: 1),
+                                const Divider(height: 1, color: Colors.black),
                                 ListTile(
-                                  leading: const Icon(Icons.send),
-                                  title: const Text('Test Notification'),
+                                  leading: const Icon(
+                                    Icons.send,
+                                    color: Colors.black,
+                                  ),
+                                  title: const Text(
+                                    'Test Notification',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
                                   subtitle: const Text(
                                     'Send a notification to test which will trigger after 1m',
+                                    style: TextStyle(color: Colors.black),
                                   ),
                                   onTap: _sendTestNotification,
                                 ),
                               ],
                             ),
                           ),
-
                           // Notification Management Card
                           Card(
+                            color: Colors.white,
                             margin: const EdgeInsets.only(bottom: 16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,9 +608,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                   padding: const EdgeInsets.all(16.0),
                                   child: Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.settings,
-                                        color: colorScheme.primary,
+                                        color: Colors.black,
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
@@ -653,77 +618,83 @@ class _SettingsPageState extends State<SettingsPage> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: colorScheme.onSurface,
+                                          color: Colors.black,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const Divider(height: 1),
+                                const Divider(height: 1, color: Colors.black),
                                 ListTile(
-                                  leading: const Icon(Icons.list),
-                                  title: const Text('List Notifications'),
+                                  leading: const Icon(
+                                    Icons.list,
+                                    color: Colors.black,
+                                  ),
+                                  title: const Text(
+                                    'List Notifications',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
                                   subtitle: const Text(
                                     'View all scheduled notifications in console',
+                                    style: TextStyle(color: Colors.black),
                                   ),
                                   onTap: _listNotifications,
                                 ),
-                                const Divider(height: 1),
+                                const Divider(height: 1, color: Colors.black),
                                 ListTile(
-                                  leading: Icon(
+                                  leading: const Icon(
                                     Icons.cancel_outlined,
-                                    color: colorScheme.error,
+                                    color: Colors.black,
                                   ),
-                                  title: const Text('Cancel All Notifications'),
+                                  title: const Text(
+                                    'Cancel All Notifications',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
                                   subtitle: const Text(
                                     'Remove all scheduled notifications',
+                                    style: TextStyle(color: Colors.black),
                                   ),
                                   onTap: _showCancelConfirmationDialog,
                                 ),
+                                // Divider for appearance section
+                                const Divider(height: 1, color: Colors.black),
+                                Consumer<ThemeProvider>(
+                                  builder:
+                                      (context, themeProvider, _) =>
+                                          SwitchListTile(
+                                            title: const Text(
+                                              'Dark Mode',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              themeProvider.isDarkMode
+                                                  ? 'Dark theme is active'
+                                                  : 'Light theme is active',
+                                              style: const TextStyle(
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                            secondary: Icon(
+                                              themeProvider.isDarkMode
+                                                  ? Icons.dark_mode
+                                                  : Icons.light_mode,
+                                              color: Colors.black,
+                                            ),
+                                            value: themeProvider.isDarkMode,
+                                            onChanged: (_) {
+                                              themeProvider.toggleTheme();
+                                            },
+                                            activeColor: Colors.blue,
+                                          ),
+                                ),
+                                const Divider(height: 1, color: Colors.black),
                               ],
                             ),
                           ),
 
                           // About Section
-                          Card(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'About',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: colorScheme.onSurface,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Divider(height: 1),
-                                ListTile(
-                                  title: const Text('Version'),
-                                  subtitle: const Text('1.0.0'),
-                                ),
-                                const Divider(height: 1),
-                                ListTile(
-                                  title: const Text('Developer'),
-                                  subtitle: const Text('Sun Notification App'),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Space at the bottom for better scrolling
                           const SizedBox(height: 16),
                         ]),
                       ),

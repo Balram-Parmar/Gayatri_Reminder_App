@@ -34,11 +34,13 @@ dependencies:
   http: ^1.4.0
   intl: ^0.20.2
   table_calendar: ^3.0.9
-  awesome_notifications: ^0.10.1
+  connectivity_plus: ^5.0.1
+  awesome_notifications: ^0.10.1   
   path_provider: ^2.1.5
   path: ^1.9.1
   geolocator: ^14.0.0
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.2.3
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:

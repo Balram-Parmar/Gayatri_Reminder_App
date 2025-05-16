@@ -1,7 +1,22 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Location permissions -->
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.get_location"> <!-- IMPORTANT: Replace com.example.get_location with your actual app package name -->
+
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- For Android 12 (API 31) and above -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- For Android 13 (API 33) and above -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- For background location in Android 10+ -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
     <application
         android:label="get_location"
         android:name="${applicationName}"
@@ -15,10 +30,6 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -28,19 +39,58 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- awesome_notifications Receivers and Service -->
+        <receiver
+            android:name="me.carda.awesome_notifications.notifications.receivers.ScheduledNotificationBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="me.carda.awesome_notifications.notifications.receivers.ScheduledNotificationReceiver"
+            android:enabled="true"
+            android:exported="true">
+        </receiver>
+
+        <receiver
+            android:name="me.carda.awesome_notifications.notifications.receivers.DismissedNotificationReceiver"
+            android:enabled="true"
+            android:exported="true">
+        </receiver>
+
+        <service
+            android:name="me.carda.awesome_notifications.services.ForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="true" />
+
+        <!-- geolocator service and receiver -->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+        
+        <receiver
+            android:name="com.baseflow.geolocator.GeolocatorBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-          <uses-permission android:name="android.permission.VIBRATE"/>
-     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Required for text processing in Flutter -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

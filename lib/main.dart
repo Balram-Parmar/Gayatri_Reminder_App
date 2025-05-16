@@ -4,6 +4,9 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'reports_page.dart';
 import 'settings_page.dart';
 import 'notification_controller.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -50,21 +53,24 @@ void main() async {
   } catch (error) {
     debugPrint('Error initializing notifications: $error');
   }
-  runApp(const MyApp());
+
+  // Create and initialize ThemeProvider before running the app
+  final themeProvider = ThemeProvider();
+
+  runApp(
+    ChangeNotifierProvider.value(value: themeProvider, child: const MyApp()),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Sunrise Sunset App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: themeProvider.getTheme(),
       home: const MainNavigator(),
     );
   }
@@ -127,7 +133,12 @@ class _MainNavigatorState extends State<MainNavigator> {
             ),
           ],
           currentIndex: _selectedIndex,
-          selectedItemColor: Colors.blue,
+          selectedItemColor:
+              Theme.of(context).bottomNavigationBarTheme.selectedItemColor,
+          unselectedItemColor:
+              Theme.of(context).bottomNavigationBarTheme.unselectedItemColor,
+          backgroundColor:
+              Theme.of(context).bottomNavigationBarTheme.backgroundColor,
           onTap: _onItemTapped,
           elevation:
               0, // Remove default elevation since we're using custom shadow
