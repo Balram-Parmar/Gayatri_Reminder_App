@@ -153,6 +153,34 @@ class _ReportsPageState extends State<ReportsPage> {
     setState(() {});
   }
 
+  // Helper function to determine day status for calendar marker
+  String _getDayStatus(DateTime date) {
+    final year = date.year.toString();
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    
+    if (defaultData.containsKey(year) &&
+        defaultData[year].containsKey(month) &&
+        defaultData[year][month].containsKey(day)) {
+          
+      final timeSlots = defaultData[year][month][day];
+      final morning = timeSlots["morning"] ?? false;
+      final afternoon = timeSlots["afternoon"] ?? false;
+      final night = timeSlots["night"] ?? false;
+      
+      // All done - complete
+      if (morning && afternoon && night) {
+        return "complete";
+      }
+      // Some done - partial
+      else if (morning || afternoon || night) {
+        return "partial";
+      }
+    }
+    // None done or no data - incomplete
+    return "incomplete";
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedDateData = _getSelectedDateData();
@@ -226,40 +254,34 @@ class _ReportsPageState extends State<ReportsPage> {
                             },
                             calendarBuilders: CalendarBuilders(
                               markerBuilder: (context, date, events) {
-                                final year = date.year.toString();
-                                final month = date.month.toString().padLeft(
-                                  2,
-                                  '0',
-                                );
-                                final day = date.day.toString().padLeft(2, '0');
-                                bool isRed = false;
-                                if (defaultData.containsKey(year) &&
-                                    defaultData[year].containsKey(month) &&
-                                    defaultData[year][month].containsKey(day)) {
-                                  final timeSlots =
-                                      defaultData[year][month][day];
-                                  if (timeSlots["morning"] == false ||
-                                      timeSlots["afternoon"] == false ||
-                                      timeSlots["night"] == false) {
-                                    isRed = true;
-                                  }
-                                } else {
-                                  isRed = true;
+                                final status = _getDayStatus(date);
+                                
+                                Color markerColor;
+                                switch (status) {
+                                  case "complete":
+                                    markerColor = Colors.green;
+                                    break;
+                                  case "partial":
+                                    markerColor = Colors.amber;
+                                    break;
+                                  case "incomplete":
+                                    markerColor = Colors.red;
+                                    break;
+                                  default:
+                                    return null;
                                 }
-                                if (isRed) {
-                                  return Positioned(
-                                    bottom: 1,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                      ),
+                                
+                                return Positioned(
+                                  bottom: 1,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: markerColor,
+                                      shape: BoxShape.circle,
                                     ),
-                                  );
-                                }
-                                return null;
+                                  ),
+                                );
                               },
                             ),
                             calendarStyle: CalendarStyle(
@@ -306,6 +328,22 @@ class _ReportsPageState extends State<ReportsPage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildLegendItem(Colors.green, "Complete"),
+                              _buildLegendItem(Colors.amber, "Partial"),
+                              _buildLegendItem(Colors.red, "Incomplete"),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -374,21 +412,29 @@ class _ReportsPageState extends State<ReportsPage> {
                                       ),
                                       backgroundColor:
                                           morningDone
-                                              ? Colors.grey[800]
-                                              : Colors.blue[700],
-                                      disabledBackgroundColor: Colors.green
-                                          .withOpacity(0.6),
+                                              ? Colors.green
+                                              : const Color.fromARGB(255, 1, 192, 250),
+                                      disabledBackgroundColor: Colors.green,
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
                                       ),
                                       elevation: morningDone ? 0 : 2,
                                     ),
-                                    child: Text(
-                                      'Mark As Done',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        if (morningDone) 
+                                          Icon(Icons.check, color: Colors.white),
+                                        if (morningDone) 
+                                          SizedBox(width: 8),
+                                        Text(
+                                          morningDone ? 'Completed' : 'Mark as done',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -420,21 +466,29 @@ class _ReportsPageState extends State<ReportsPage> {
                                       ),
                                       backgroundColor:
                                           afternoonDone
-                                              ? Colors.grey[800]
-                                              : Colors.amber[700],
-                                      disabledBackgroundColor: Colors.green
-                                          .withOpacity(0.6),
+                                              ? Colors.green
+                                              : const Color.fromARGB(255, 1, 192, 250),
+                                      disabledBackgroundColor: Colors.green,
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
                                       ),
                                       elevation: afternoonDone ? 0 : 2,
                                     ),
-                                    child: Text(
-                                      'Mark As Done',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        if (afternoonDone) 
+                                          Icon(Icons.check, color: Colors.white),
+                                        if (afternoonDone) 
+                                          SizedBox(width: 8),
+                                        Text(
+                                          afternoonDone ? 'Completed' : 'Mark as done',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -466,21 +520,29 @@ class _ReportsPageState extends State<ReportsPage> {
                                       ),
                                       backgroundColor:
                                           nightDone
-                                              ? Colors.grey[800]
-                                              : Colors.indigo[700],
-                                      disabledBackgroundColor: Colors.green
-                                          .withOpacity(0.6),
+                                              ? Colors.green
+                                              : const Color.fromARGB(255, 1, 192, 250),
+                                      disabledBackgroundColor: Colors.green,
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
                                       ),
                                       elevation: nightDone ? 0 : 2,
                                     ),
-                                    child: Text(
-                                      'Mark As Done',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        if (nightDone) 
+                                          Icon(Icons.check, color: Colors.white),
+                                        if (nightDone) 
+                                          SizedBox(width: 8),
+                                        Text(
+                                          nightDone ? 'Completed' : 'Mark as done',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -494,6 +556,29 @@ class _ReportsPageState extends State<ReportsPage> {
                   ),
                 ),
               ),
+    );
+  }
+  
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -50,6 +50,9 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final hasConnectivity = await _checkConnectivity();
+
+      print("Connectivity status: $hasConnectivity");
+
       if (hasConnectivity) {
         await _fetchSunTimesFromApi();
       } else {
@@ -68,6 +71,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchSunTimesFromApi() async {
     try {
       final pos = await _getLocation();
+      print("Location: ${pos.latitude}, ${pos.longitude}");
       final latitude = pos.latitude;
       final longitude = pos.longitude;
       final now = DateTime.now();
@@ -85,7 +89,7 @@ class _HomePageState extends State<HomePage> {
       final response = await _client
           .get(Uri.parse(url))
           .timeout(const Duration(seconds: 15));
-
+      print("responce data is : ${response.body}");
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
@@ -172,17 +176,16 @@ class _HomePageState extends State<HomePage> {
         throw Exception('Location permissions are permanently denied.');
       }
 
-      // First try to get the last known position and use it if it's recent
-      final lastPosition = await Geolocator.getLastKnownPosition();
-      if (lastPosition != null &&
-          DateTime.now().difference(lastPosition.timestamp).inMinutes < 30) {
-        return lastPosition;
-      }
+      // // First try to get the last known position and use it if it's recent
+      // final lastPosition = await Geolocator.getLastKnownPosition();
+      // if (lastPosition != null &&
+      //     DateTime.now().difference(lastPosition.timestamp).inMinutes < 30) {
+      //   return lastPosition;
+      // }
 
       // If no recent position, get current position with timeout
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low, // Use lower accuracy for speed
-        timeLimit: const Duration(seconds: 5),
+        desiredAccuracy: LocationAccuracy.high, // Use lower accuracy for speed
       );
     } catch (e) {
       debugPrint('Error getting location: $e');
