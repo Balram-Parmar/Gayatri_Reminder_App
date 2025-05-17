@@ -60,7 +60,7 @@ class _ReportsPageState extends State<ReportsPage> {
       final Map<String, dynamic> defaultData = {
         "2025": {
           "05": {
-            "01": {"morning": true, "afternoon": false, "night": true},
+            "01": {"morning": false, "afternoon": false, "night": false},
             "02": {"morning": false, "afternoon": false, "night": false},
             "03": {"morning": false, "afternoon": false, "night": false},
             "04": {"morning": false, "afternoon": false, "night": false},

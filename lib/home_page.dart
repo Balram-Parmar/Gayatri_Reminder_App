@@ -77,7 +77,10 @@ class _HomePageState extends State<HomePage> {
             final data = jsonDecode(response.body);
 
             // Save to cache
-            final dir = await getApplicationDocumentsDirectory();
+            final dir = await getDownloadsDirectory();
+            if (dir == null) {
+              throw Exception('Cannot access downloads directory');
+            }
             final file = File(path.join(dir.path, 'SunriseTimes.json'));
             await file.writeAsString(jsonEncode(data));
 

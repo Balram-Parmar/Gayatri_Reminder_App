@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,6 +22,7 @@ class _SettingsPageState extends State<SettingsPage> {
   int _rescheduleMinutes = 15;
   bool _isLoading = false;
   int? _id = 0;
+  String? _lastLoadedSadhnaFile;
 
   @override
   void initState() {
@@ -429,6 +431,102 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  /// Loads a Sadhna file from device storage and replaces sadhnaMantra.json
+  Future<void> _loadSadhnaFile() async {
+    try {
+      setState(() => _isLoading = true);
+
+      // Open file picker to select JSON file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null || result.files.isEmpty) {
+        _showErrorSnackBar('No file selected');
+        return;
+      }
+
+      // Get the selected file path
+      final filePath = result.files.single.path;
+      if (filePath == null) {
+        _showErrorSnackBar('Unable to access selected file');
+        return;
+      }
+
+      // Read the selected JSON file
+      final selectedFile = File(filePath);
+      final String jsonContent = await selectedFile.readAsString();
+
+      // Verify it's valid JSON with the correct structure
+      try {
+        final dynamic jsonData = jsonDecode(jsonContent);
+        if (jsonData == null) {
+          _showErrorSnackBar('Selected file does not contain valid JSON data');
+          return;
+        }
+
+        // Verify JSON structure has years as keys
+        if (jsonData is! Map<String, dynamic>) {
+          _showErrorSnackBar(
+            'Invalid sadhnaMantra file format: must contain year entries',
+          );
+          return;
+        }
+
+        // Create backup of existing file before replacement
+        final dir = await getDownloadsDirectory();
+        if (dir == null) {
+          _showErrorSnackBar('Could not access downloads directory');
+          return;
+        }
+
+        final destFilePath = path.join(dir.path, 'sadhnaMantra.json');
+        final destFile = File(destFilePath);
+
+        // Create backup if the original file exists
+        if (await destFile.exists()) {
+          final backupPath = path.join(
+            dir.path,
+            'sadhnaMantra_backup_${DateTime.now().millisecondsSinceEpoch}.json',
+          );
+          await destFile.copy(backupPath);
+          print('Created backup at: $backupPath');
+        }
+
+        // Copy content to destination file
+        await destFile.writeAsString(jsonContent);
+
+        setState(() {
+          _lastLoadedSadhnaFile = path.basename(filePath);
+        });
+
+        // Force reports page to reload data on next visit
+        await _refreshDataInReportsPage();
+
+        _showSuccessSnackBar(
+          'Sadhna file loaded successfully: ${path.basename(filePath)}',
+        );
+      } catch (e) {
+        _showErrorSnackBar(
+          'Invalid JSON format in selected file: ${e.toString()}',
+        );
+        return;
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error loading Sadhna file: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  /// Forces reports page to reload data on next visit
+  Future<void> _refreshDataInReportsPage() async {
+    // This method doesn't need to do anything as the Reports page reads
+    // the file every time it's loaded, but we could add additional logic here
+    // if needed in the future
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -534,6 +632,70 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                             ),
                           ),
+
+                          // Sadhna File Card
+                          Card(
+                            color: Colors.white,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.file_present,
+                                        color: Colors.black,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Sadhna File',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (_lastLoadedSadhnaFile != null)
+                                    Text(
+                                      'Last loaded: $_lastLoadedSadhnaFile',
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  else
+                                    const Text(
+                                      'No Sadhna file loaded',
+                                      style: TextStyle(color: Colors.black),
+                                    ),
+                                  const SizedBox(height: 16),
+                                  FilledButton.icon(
+                                    onPressed: _loadSadhnaFile,
+                                    icon: const Icon(
+                                      Icons.file_upload,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text(
+                                      'Load Sadhna File',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.black,
+                                      minimumSize: const Size(
+                                        double.infinity,
+                                        44,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
                           // Notification Settings Card
                           Card(
                             color: Colors.white,
