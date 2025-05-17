@@ -173,7 +173,11 @@ class _HomePageState extends State<HomePage> {
         final data = jsonDecode(response.body);
 
         // Save to cache
-        final dir = await getApplicationDocumentsDirectory();
+        final dir = await getDownloadsDirectory();
+        if (dir == null) {
+          throw Exception('Cannot access downloads directory');
+        }
+        print("dir path is : ${dir.path}");
         final file = File(path.join(dir.path, 'SunriseTimes.json'));
         await file.writeAsString(jsonEncode(data));
 
@@ -220,7 +224,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadFromCache() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getDownloadsDirectory();
+      if (dir == null) {
+        throw Exception('Cannot access downloads directory');
+      }
       final file = File(path.join(dir.path, 'SunriseTimes.json'));
       if (await file.exists()) {
         final contents = await file.readAsString();
@@ -330,8 +337,8 @@ class _HomePageState extends State<HomePage> {
 
       // Return default location
       return Position(
-        latitude: 40.7128,
-        longitude: -74.0060,
+        latitude: 23.0225,
+        longitude: 72.5714,
         timestamp: DateTime.now(),
         accuracy: 0,
         altitude: 0,
