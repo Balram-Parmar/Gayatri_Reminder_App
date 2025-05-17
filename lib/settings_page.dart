@@ -7,8 +7,6 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'dart:convert';
-import 'package:provider/provider.dart';
-import 'theme_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -231,7 +229,9 @@ class _SettingsPageState extends State<SettingsPage> {
         DateTime sunriseTime = _parseDateTime(dateStr, sunriseStr);
         DateTime sunsetTime = _parseDateTime(dateStr, sunsetStr);
         DateTime solarNoonTime = _parseDateTime(dateStr, solarNoonStr);
-
+        print(
+          'Scheduled notification at sunriseTime: $sunriseTime and dateStr: $dateStr',
+        );
         _scheduleNotification(
           sunriseTime,
           "Sunrise Time:$sunriseTime",
@@ -432,7 +432,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -655,41 +654,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                     style: TextStyle(color: Colors.black),
                                   ),
                                   onTap: _showCancelConfirmationDialog,
-                                ),
-                                // Divider for appearance section
-                                const Divider(height: 1, color: Colors.black),
-                                Consumer<ThemeProvider>(
-                                  builder:
-                                      (context, themeProvider, _) =>
-                                          SwitchListTile(
-                                            title: const Text(
-                                              'Dark Mode',
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                            subtitle: Text(
-                                              themeProvider.isDarkMode
-                                                  ? 'Dark theme is active'
-                                                  : 'Light theme is active',
-                                              style: const TextStyle(
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                            secondary: Icon(
-                                              themeProvider.isDarkMode
-                                                  ? Icons.dark_mode
-                                                  : Icons.light_mode,
-                                              color: Colors.black,
-                                            ),
-                                            value: themeProvider.isDarkMode,
-                                            onChanged: (_) {
-                                              themeProvider.toggleTheme();
-                                            },
-                                            activeColor: Colors.blue,
-                                          ),
-                                ),
-                                const Divider(height: 1, color: Colors.black),
+                                ), // No dark mode toggle - removed
                               ],
                             ),
                           ),

@@ -6,9 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
-import 'package:connectivity_plus/connectivity_plus.dart'; // Add this dependency to your pubspec.yaml
-import 'package:provider/provider.dart';
-import 'theme_provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,9 +21,7 @@ class _HomePageState extends State<HomePage> {
   DateTime? _solarNoon;
   bool _isLoading = false;
   String _errorMessage = '';
-  int _retryCount = 0;
-  final int _maxRetries = 3;
-  final Duration _retryDelay = const Duration(seconds: 3);
+  final _client = http.Client(); // Create a persistent HTTP client
 
   @override
   void initState() {
@@ -35,276 +31,127 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-Future<bool> _checkConnectivity() async {
+  @override
+  void dispose() {
+    _client.close(); // Close the HTTP client when the widget is disposed
+    super.dispose();
+  }
+
+  Future<bool> _checkConnectivity() async {
     var connectivityResult = await Connectivity().checkConnectivity();
     return connectivityResult != ConnectivityResult.none;
   }
 
-Future<void> _getSunTimesToday() async {
-    final theme = Theme.of(context);
-    final isDarkMode =
-        Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-
+  Future<void> _getSunTimesToday() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      // Check for internet connectivity first
       final hasConnectivity = await _checkConnectivity();
-      if (!hasConnectivity) {
-        throw Exception('No internet connection available');
+      if (hasConnectivity) {
+        await _fetchSunTimesFromApi();
+      } else {
+        await _loadFromCache();
       }
-
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(path.join(dir.path, 'SunriseTimes.json'));
-      final today = DateTime.now();
-      final todayStr =
-          "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-
-      Map<String, dynamic>? data;
-      bool needsFreshData = true;
-      bool loadedFromCache = false;
-
-      // Try to load from cache
-      if (await file.exists()) {
-        try {
-          final contents = await file.readAsString();
-          data = jsonDecode(contents);
-
-          final todayEntryIndex = data?['results']?.indexWhere(
-            (entry) => entry['date'] == todayStr,
-          );
-
-          if (todayEntryIndex != null && todayEntryIndex != -1) {
-            needsFreshData = false;
-            loadedFromCache = true;
-            final todayEntry = data!['results'][todayEntryIndex];
-
-            setState(() {
-              _sunrise = _parseTime(todayEntry['date'], todayEntry['sunrise']);
-              _sunset = _parseTime(todayEntry['date'], todayEntry['sunset']);
-              _solarNoon = _parseTime(
-                todayEntry['date'],
-                todayEntry['solar_noon'],
-              );
-            });
-          }
-        } catch (e) {
-          debugPrint('Error parsing local data: $e');
-          // We'll try to get fresh data if we can't parse cached data
-        }
-      }
-
-      if (needsFreshData) {
-        var pos = await _getLocation();
-        double latitude = pos.latitude;
-        double longitude = pos.longitude;
-        var date = DateTime.now();
-
-        var dateStart =
-            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
-        var endDate = date.add(const Duration(days: 30));
-        var dateEnd =
-            "${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}";
-
-        final url =
-            "https://api.sunrisesunset.io/json?lat=$latitude&lng=$longitude&date_start=$dateStart&date_end=$dateEnd&formatted=0";
-
-        // Try alternative APIs if the primary one fails
-        final alternativeApis = [
-          "https://api.sunrise-sunset.org/json?lat=$latitude&lng=$longitude&date=$dateStart&formatted=0",
-        ];
-
-        http.Response? response;
-        String? errorDetails;
-
-        // Try the primary API
-        try {
-          response = await http
-              .get(Uri.parse(url))
-              .timeout(
-                const Duration(seconds: 10),
-                onTimeout: () => throw TimeoutException('Request timed out'),
-              );
-        } catch (e) {
-          errorDetails = e.toString();
-          debugPrint('Primary API error: $e');
-
-          // Try alternative APIs
-          for (var apiUrl in alternativeApis) {
-            try {
-              debugPrint('Trying alternative API: $apiUrl');
-              response = await http
-                  .get(Uri.parse(apiUrl))
-                  .timeout(
-                    const Duration(seconds: 10),
-                    onTimeout:
-                        () =>
-                            throw TimeoutException(
-                              'Alternative request timed out',
-                            ),
-                  );
-
-              if (response.statusCode == 200) {
-                debugPrint('Successfully connected to alternative API');
-                break; // Break if successful
-              }
-            } catch (e) {
-              debugPrint('Alternative API error: $e');
-              // Continue to the next alternative
-            }
-          }
-        }
-
-        if (response == null || response.statusCode != 200) {
-          throw Exception(
-            'Failed to load sun times: ${response?.statusCode ?? "No response"}, Error: $errorDetails',
-          );
-        }
-
-        data = jsonDecode(response.body);
-
-        // Handle different API response formats
-        if (data?['results'] != null) {
-          // Primary API format
-          final todayEntry = data!['results'].firstWhere(
-            (entry) => entry['date'] == todayStr,
-            orElse: () => data!['results'][0],
-          );
-
-          setState(() {
-            _sunrise = _parseTime(todayEntry['date'], todayEntry['sunrise']);
-            _sunset = _parseTime(todayEntry['date'], todayEntry['sunset']);
-            _solarNoon = _parseTime(
-              todayEntry['date'],
-              todayEntry['solar_noon'],
-            );
-          });
-        } else if (data?['results'] == null && data != null) {
-          // Alternative API format (for api.sunrise-sunset.org)
-          setState(() {
-            _sunrise = DateTime.parse(data!['results']['sunrise']);
-            _sunset = DateTime.parse(data['results']['sunset']);
-            _solarNoon = DateTime.parse(data['results']['solar_noon']);
-          });
-
-          // Convert to our expected format for caching
-          data = {
-            'results': [
-              {
-                'date': todayStr,
-                'sunrise': data['results']['sunrise'],
-                'sunset': data['results']['sunset'],
-                'solar_noon': data['results']['solar_noon'],
-              },
-            ],
-          };
-        }
-
-        // Cache the data
-        await file.writeAsString(jsonEncode(data));
-      }
-
-      // Reset retry count on success
-      _retryCount = 0;
     } catch (e) {
       debugPrint('Error getting sun times: $e');
-
-      setState(() {
-        _errorMessage = 'Unable to fetch data: ${e.toString()}';
-      });
-
-      // Try to load from cache as fallback if we haven't already
-      if (_retryCount < _maxRetries) {
-        _retryCount++;
-        debugPrint(
-          'Retrying in $_retryDelay... (Attempt $_retryCount of $_maxRetries)',
-        );
-
-        // Show a retry message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Connection issue. Retrying in ${_retryDelay.inSeconds} seconds...',
-            ),
-            duration: _retryDelay,
-          ),
-        );
-
-        // Retry after delay
-        Timer(_retryDelay, _getSunTimesToday);
-        return;
-      } else {
-        // Try to use cached data as last resort
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File(path.join(dir.path, 'SunriseTimes.json'));
-
-        if (await file.exists()) {
-          try {
-            final contents = await file.readAsString();
-            final data = jsonDecode(contents);
-
-            // Use the most recent entry in the cache
-            if (data['results'] != null && data['results'].isNotEmpty) {
-              final cachedEntry = data['results'][0];
-
-              setState(() {
-                _sunrise = _parseTime(
-                  cachedEntry['date'],
-                  cachedEntry['sunrise'],
-                );
-                _sunset = _parseTime(
-                  cachedEntry['date'],
-                  cachedEntry['sunset'],
-                );
-                _solarNoon = _parseTime(
-                  cachedEntry['date'],
-                  cachedEntry['solar_noon'],
-                );
-                _errorMessage = 'Using cached data from ${cachedEntry['date']}';
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Network error. Using stored data from ${cachedEntry['date']}',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                  backgroundColor:
-                      isDarkMode ? Colors.orange[800] : Colors.orange[300],
-                  duration: Duration(seconds: 5),
-                ),
-              );
-              return;
-            }
-          } catch (e) {
-            debugPrint('Error reading cache as fallback: $e');
-          }
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Unable to load sun times: Network error',
-              style: TextStyle(color: theme.colorScheme.onError),
-            ),
-            backgroundColor: theme.colorScheme.error,
-            duration: Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: theme.colorScheme.onError,
-              onPressed: () {
-                _retryCount = 0;
-                _getSunTimesToday();
-              },
-            ),
-          ),
-        );
-      }
+      await _loadFromCache();
     } finally {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchSunTimesFromApi() async {
+    try {
+      final pos = await _getLocation();
+      final latitude = pos.latitude;
+      final longitude = pos.longitude;
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0);
+      final dateStart =
+          "${startOfMonth.year}-${startOfMonth.month.toString().padLeft(2, '0')}-${startOfMonth.day.toString().padLeft(2, '0')}";
+      final dateEnd =
+          "${endOfMonth.year}-${endOfMonth.month.toString().padLeft(2, '0')}-${endOfMonth.day.toString().padLeft(2, '0')}";
+
+      final url =
+          "https://api.sunrisesunset.io/json?lat=$latitude&lng=$longitude&date_start=$dateStart&date_end=$dateEnd&formatted=0";
+
+      // Use the existing client with a shorter timeout
+      final response = await _client
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Save to cache
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File(path.join(dir.path, 'SunriseTimes.json'));
+        await file.writeAsString(jsonEncode(data));
+
+        _setTodaySunTimes(data);
+      } else {
+        throw Exception('Failed to load sun times: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching from API: $e');
+      throw e; // Rethrow to be caught by the calling function
+    }
+  }
+
+  void _setTodaySunTimes(Map<String, dynamic> data) {
+    final today = DateTime.now();
+    final todayStr =
+        "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
+    // Explicitly check that results is a List before using firstWhere
+    if (data['results'] is! List) {
+      setState(() {
+        _errorMessage = 'Invalid data format from API';
+      });
+      return;
+    }
+
+    final todayEntry = (data['results'] as List).firstWhere(
+      (entry) => entry['date'] == todayStr,
+      orElse: () => null,
+    );
+
+    if (todayEntry != null) {
+      setState(() {
+        _sunrise = _parseTime(todayEntry['date'], todayEntry['sunrise']);
+        _sunset = _parseTime(todayEntry['date'], todayEntry['sunset']);
+        _solarNoon = _parseTime(todayEntry['date'], todayEntry['solar_noon']);
+      });
+    } else {
+      setState(() {
+        _errorMessage = 'No data available for today';
+      });
+    }
+  }
+
+  Future<void> _loadFromCache() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(path.join(dir.path, 'SunriseTimes.json'));
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        final data = jsonDecode(contents);
+        _setTodaySunTimes(data);
+      } else {
+        setState(() {
+          _errorMessage = 'No cached data available';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading from cache: $e');
+      setState(() {
+        _errorMessage = 'Error loading cached data';
       });
     }
   }
@@ -325,15 +172,17 @@ Future<void> _getSunTimesToday() async {
         throw Exception('Location permissions are permanently denied.');
       }
 
+      // First try to get the last known position and use it if it's recent
       final lastPosition = await Geolocator.getLastKnownPosition();
       if (lastPosition != null &&
           DateTime.now().difference(lastPosition.timestamp).inMinutes < 30) {
         return lastPosition;
       }
 
+      // If no recent position, get current position with timeout
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 10),
+        desiredAccuracy: LocationAccuracy.low, // Use lower accuracy for speed
+        timeLimit: const Duration(seconds: 5),
       );
     } catch (e) {
       debugPrint('Error getting location: $e');
@@ -348,6 +197,7 @@ Future<void> _getSunTimesToday() async {
         ),
       );
 
+      // Return default location
       return Position(
         latitude: 40.7128,
         longitude: -74.0060,
@@ -365,7 +215,6 @@ Future<void> _getSunTimesToday() async {
 
   DateTime _parseTime(String dateStr, String timeStr) {
     try {
-      // Handle ISO format time strings (from alternative API)
       if (timeStr.contains('T') && timeStr.contains('Z')) {
         return DateTime.parse(timeStr);
       }
@@ -389,7 +238,6 @@ Future<void> _getSunTimesToday() async {
 
       timeStr =
           '${hours.toString().padLeft(2, '0')}:${timeParts[1]}:${timeParts[2]}';
-
       String dateTimeStr = '${dateStr}T$timeStr';
       return DateTime.parse(dateTimeStr);
     } catch (e) {
@@ -408,8 +256,6 @@ Future<void> _getSunTimesToday() async {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.isDarkMode;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -447,31 +293,20 @@ Future<void> _getSunTimesToday() async {
                   padding: EdgeInsets.all(8),
                   margin: EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color:
-                        isDarkMode
-                            ? Colors.orange[900]?.withOpacity(0.2)
-                            : Colors.orange[100],
+                    color: Colors.orange[100],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.warning_amber_rounded,
-                        color:
-                            isDarkMode
-                                ? Colors.orange[300]
-                                : Colors.orange[700],
+                        color: Colors.orange[700],
                       ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _errorMessage,
-                          style: TextStyle(
-                            color:
-                                isDarkMode
-                                    ? Colors.orange[300]
-                                    : Colors.orange[800],
-                          ),
+                          style: TextStyle(color: Colors.orange[800]),
                         ),
                       ),
                     ],

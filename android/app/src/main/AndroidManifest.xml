@@ -38,38 +38,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-        </activity>
-
-        <!-- awesome_notifications Receivers and Service -->
+        </activity>        <!-- awesome_notifications Receivers and Service -->
         <receiver
-            android:name="me.carda.awesome_notifications.notifications.receivers.ScheduledNotificationBootReceiver"
-            android:enabled="true"
+            android:name="me.carda.awesome_notifications.notifications.broadcasters.AwesomeNotificationsDismissReceiver"
+            android:exported="false"/>
+        <receiver
+            android:name="me.carda.awesome_notifications.notifications.broadcasters.AwesomeNotificationsOnBootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
-
         <receiver
-            android:name="me.carda.awesome_notifications.notifications.receivers.ScheduledNotificationReceiver"
-            android:enabled="true"
-            android:exported="true">
-        </receiver>
-
+            android:name="me.carda.awesome_notifications.notifications.broadcasters.ScheduledAwesomeNotificationsReceiver"
+            android:exported="true"/>
         <receiver
-            android:name="me.carda.awesome_notifications.notifications.receivers.DismissedNotificationReceiver"
-            android:enabled="true"
-            android:exported="true">
-        </receiver>
-
-        <service
-            android:name="me.carda.awesome_notifications.services.ForegroundService"
-            android:enabled="true"
-            android:exported="false"
-            android:stopWithTask="true" />
+            android:name="me.carda.awesome_notifications.notifications.broadcasters.AwesomeNotificationsRestoreReceiver"
+            android:exported="false"/>
 
         <!-- geolocator service and receiver -->
         <service
