@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.get_location"
+    namespace = "com.hkm.gayatri"
     compileSdk = 35
    ndkVersion = "27.0.12077973"    
    
@@ -19,10 +19,9 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
-    
-    defaultConfig {
+      defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.get_location"
+        applicationId = "com.hkm.gayatri"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23

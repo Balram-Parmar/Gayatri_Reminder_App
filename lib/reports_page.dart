@@ -158,16 +158,15 @@ class _ReportsPageState extends State<ReportsPage> {
     final year = date.year.toString();
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
-    
+
     if (defaultData.containsKey(year) &&
         defaultData[year].containsKey(month) &&
         defaultData[year][month].containsKey(day)) {
-          
       final timeSlots = defaultData[year][month][day];
       final morning = timeSlots["morning"] ?? false;
       final afternoon = timeSlots["afternoon"] ?? false;
       final night = timeSlots["night"] ?? false;
-      
+
       // All done - complete
       if (morning && afternoon && night) {
         return "complete";
@@ -255,7 +254,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             calendarBuilders: CalendarBuilders(
                               markerBuilder: (context, date, events) {
                                 final status = _getDayStatus(date);
-                                
+
                                 Color markerColor;
                                 switch (status) {
                                   case "complete":
@@ -270,7 +269,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                   default:
                                     return null;
                                 }
-                                
+
                                 return Positioned(
                                   bottom: 1,
                                   child: Container(
@@ -413,7 +412,12 @@ class _ReportsPageState extends State<ReportsPage> {
                                       backgroundColor:
                                           morningDone
                                               ? Colors.green
-                                              : const Color.fromARGB(255, 1, 192, 250),
+                                              : const Color.fromARGB(
+                                                255,
+                                                1,
+                                                192,
+                                                250,
+                                              ),
                                       disabledBackgroundColor: Colors.green,
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
@@ -421,14 +425,19 @@ class _ReportsPageState extends State<ReportsPage> {
                                       elevation: morningDone ? 0 : 2,
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        if (morningDone) 
-                                          Icon(Icons.check, color: Colors.white),
-                                        if (morningDone) 
-                                          SizedBox(width: 8),
+                                        if (morningDone)
+                                          Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                          ),
+                                        if (morningDone) SizedBox(width: 8),
                                         Text(
-                                          morningDone ? 'Completed' : 'Mark as done',
+                                          morningDone
+                                              ? 'Completed'
+                                              : 'Mark as done',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w500,
@@ -467,7 +476,12 @@ class _ReportsPageState extends State<ReportsPage> {
                                       backgroundColor:
                                           afternoonDone
                                               ? Colors.green
-                                              : const Color.fromARGB(255, 1, 192, 250),
+                                              : const Color.fromARGB(
+                                                255,
+                                                1,
+                                                192,
+                                                250,
+                                              ),
                                       disabledBackgroundColor: Colors.green,
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
@@ -475,14 +489,19 @@ class _ReportsPageState extends State<ReportsPage> {
                                       elevation: afternoonDone ? 0 : 2,
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        if (afternoonDone) 
-                                          Icon(Icons.check, color: Colors.white),
-                                        if (afternoonDone) 
-                                          SizedBox(width: 8),
+                                        if (afternoonDone)
+                                          Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                          ),
+                                        if (afternoonDone) SizedBox(width: 8),
                                         Text(
-                                          afternoonDone ? 'Completed' : 'Mark as done',
+                                          afternoonDone
+                                              ? 'Completed'
+                                              : 'Mark as done',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w500,
@@ -521,7 +540,12 @@ class _ReportsPageState extends State<ReportsPage> {
                                       backgroundColor:
                                           nightDone
                                               ? Colors.green
-                                              : const Color.fromARGB(255, 1, 192, 250),
+                                              : const Color.fromARGB(
+                                                255,
+                                                1,
+                                                192,
+                                                250,
+                                              ),
                                       disabledBackgroundColor: Colors.green,
                                       padding: EdgeInsets.symmetric(
                                         vertical: 12,
@@ -529,14 +553,19 @@ class _ReportsPageState extends State<ReportsPage> {
                                       elevation: nightDone ? 0 : 2,
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        if (nightDone) 
-                                          Icon(Icons.check, color: Colors.white),
-                                        if (nightDone) 
-                                          SizedBox(width: 8),
+                                        if (nightDone)
+                                          Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                          ),
+                                        if (nightDone) SizedBox(width: 8),
                                         Text(
-                                          nightDone ? 'Completed' : 'Mark as done',
+                                          nightDone
+                                              ? 'Completed'
+                                              : 'Mark as done',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w500,
@@ -558,26 +587,17 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
     );
   }
-  
+
   Widget _buildLegendItem(Color color, String label) {
     return Row(
       children: [
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.white, fontSize: 12)),
       ],
     );
   }

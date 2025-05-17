@@ -242,7 +242,47 @@ class _HomePageState extends State<HomePage> {
   Future<Position> _getLocation({bool fresh = false}) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) throw Exception('Location services are disabled.');
+      if (!serviceEnabled) {
+        // Show dialog asking to enable location services
+        bool userAccepted =
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text('Location Services Disabled'),
+                  content: Text(
+                    'Please enable location services to get accurate sun times for your location.',
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      child: Text('Cancel'),
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                    ),
+                    TextButton(
+                      child: Text('Open Settings'),
+                      onPressed: () {
+                        Navigator.of(context).pop(true);
+                      },
+                    ),
+                  ],
+                );
+              },
+            ) ??
+            false;
+
+        if (userAccepted) {
+          await Geolocator.openLocationSettings();
+        }
+
+        // Check again if enabled after settings
+        serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          throw Exception('Location services are still disabled.');
+        }
+      }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {

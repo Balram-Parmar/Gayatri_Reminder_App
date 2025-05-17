@@ -17,7 +17,12 @@ class NotificationController {
 
   /// Get the settings file path
   static Future<String> _getSettingsFilePath() async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getDownloadsDirectory();
+    if (dir == null) {
+      // Fallback to application documents directory if downloads not available
+      final docDir = await getApplicationDocumentsDirectory();
+      return path.join(docDir.path, settingsFileName);
+    }
     return path.join(dir.path, settingsFileName);
   }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.get_location"> <!-- IMPORTANT: Replace com.example.get_location with your actual app package name -->
+    package="com.hkm.gayatri"> <!-- Package name changed to com.hkm.gayatri -->
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -40,21 +40,28 @@
             </intent-filter>
         </activity>        <!-- awesome_notifications Receivers and Service -->
         <receiver
-            android:name="me.carda.awesome_notifications.notifications.broadcasters.AwesomeNotificationsDismissReceiver"
-            android:exported="false"/>
+            android:name="me.carda.awesome_notifications.DartNotificationActionReceiver"
+            android:exported="true" />
         <receiver
-            android:name="me.carda.awesome_notifications.notifications.broadcasters.AwesomeNotificationsOnBootReceiver"
+            android:name="me.carda.awesome_notifications.DartDismissedNotificationReceiver"
+            android:exported="true" />
+        <receiver
+            android:name="me.carda.awesome_notifications.DartScheduledNotificationReceiver"
+            android:exported="true" />
+        <receiver
+            android:name="me.carda.awesome_notifications.DartRefreshSchedulesReceiver"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
-        <receiver
-            android:name="me.carda.awesome_notifications.notifications.broadcasters.ScheduledAwesomeNotificationsReceiver"
-            android:exported="true"/>
-        <receiver
-            android:name="me.carda.awesome_notifications.notifications.broadcasters.AwesomeNotificationsRestoreReceiver"
-            android:exported="false"/>
 
         <!-- geolocator service and receiver -->
         <service

@@ -16,10 +16,10 @@ void main() async {
       null, // no default icon for now
       [
         NotificationChannel(
-          channelGroupKey: 'basic_channel_group',
+    
           channelKey: 'basic_channel',
-          channelName: 'Basic Notifications',
-          channelDescription: 'Channel for basic notifications',
+          channelName: 'Gayatri Notifications',
+          channelDescription: 'Notifications for Gayatri Mantri 3-Times a day',
           defaultColor: Colors.blue,
           ledColor: Colors.white,
           importance: NotificationImportance.High,

@@ -8,7 +8,7 @@
 PRODUCT_NAME = get_location
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.getLocation
+PRODUCT_BUNDLE_IDENTIFIER = com.hkm.gayatri
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.hkm. All rights reserved.
