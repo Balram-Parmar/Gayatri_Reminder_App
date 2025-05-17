@@ -42,6 +42,85 @@ class _HomePageState extends State<HomePage> {
     return connectivityResult != ConnectivityResult.none;
   }
 
+  Future<void> _fullRefresh() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final hasConnectivity = await _checkConnectivity();
+
+      if (hasConnectivity) {
+        try {
+          final pos = await _getLocation(fresh: true);
+          print("Location: ${pos.latitude}, ${pos.longitude}");
+          final latitude = pos.latitude;
+          final longitude = pos.longitude;
+          final now = DateTime.now();
+          final startOfMonth = DateTime(now.year, now.month, 1);
+          final endOfMonth = DateTime(now.year, now.month + 1, 0);
+          final dateStart =
+              "${startOfMonth.year}-${startOfMonth.month.toString().padLeft(2, '0')}-${startOfMonth.day.toString().padLeft(2, '0')}";
+          final dateEnd =
+              "${endOfMonth.year}-${endOfMonth.month.toString().padLeft(2, '0')}-${endOfMonth.day.toString().padLeft(2, '0')}";
+
+          final url =
+              "https://api.sunrisesunset.io/json?lat=$latitude&lng=$longitude&date_start=$dateStart&date_end=$dateEnd&formatted=0";
+
+          // Use the existing client with a shorter timeout
+          final response = await _client
+              .get(Uri.parse(url))
+              .timeout(const Duration(seconds: 15));
+          print("responce data is : ${response.body}");
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+
+            // Save to cache
+            final dir = await getApplicationDocumentsDirectory();
+            final file = File(path.join(dir.path, 'SunriseTimes.json'));
+            await file.writeAsString(jsonEncode(data));
+
+            _setTodaySunTimes(data);
+          } else {
+            throw Exception('Failed to load sun times: ${response.statusCode}');
+          }
+        } catch (e) {
+          debugPrint('Error fetching from API: $e');
+          throw e; // Rethrow to be caught by the calling function
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'You are offline. check your internet. and try again.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            duration: Duration(seconds: 8),
+          ),
+        );
+        await _loadFromCache();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to get your location. Using default location.',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      await _loadFromCache();
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _getSunTimesToday() async {
     setState(() {
       _isLoading = true;
@@ -160,7 +239,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<Position> _getLocation() async {
+  Future<Position> _getLocation({bool fresh = false}) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) throw Exception('Location services are disabled.');
@@ -176,17 +255,26 @@ class _HomePageState extends State<HomePage> {
         throw Exception('Location permissions are permanently denied.');
       }
 
-      // // First try to get the last known position and use it if it's recent
-      // final lastPosition = await Geolocator.getLastKnownPosition();
-      // if (lastPosition != null &&
-      //     DateTime.now().difference(lastPosition.timestamp).inMinutes < 30) {
-      //   return lastPosition;
-      // }
+      if (fresh) {
+        // Get current position with timeout
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 15),
+        );
+      } else {
+        // Get last known position
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        if (lastPosition != null &&
+            DateTime.now().difference(lastPosition.timestamp).inMinutes < 30) {
+          return lastPosition;
+        }
 
-      // If no recent position, get current position with timeout
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high, // Use lower accuracy for speed
-      );
+        // If we don't have a recent last position, get current position
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 15),
+        );
+      }
     } catch (e) {
       debugPrint('Error getting location: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -410,7 +498,7 @@ class _HomePageState extends State<HomePage> {
                 if (_sunrise != null)
                   Center(
                     child: ElevatedButton(
-                      onPressed: _getSunTimesToday,
+                      onPressed: _fullRefresh,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: theme.colorScheme.onPrimary,
@@ -419,7 +507,7 @@ class _HomePageState extends State<HomePage> {
                           vertical: 12,
                         ),
                       ),
-                      child: Text('Refresh Data'),
+                      child: Text('Full Refresh Data'),
                     ),
                   ),
               ],

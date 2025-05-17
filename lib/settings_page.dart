@@ -519,7 +519,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                       color: Colors.white,
                                     ),
                                     label: const Text(
-                                      'Schedule Sun Notifications',
+                                      'Re-Schedule Notifications For 30 Days',
                                       style: TextStyle(color: Colors.white),
                                     ),
                                     style: FilledButton.styleFrom(
@@ -568,7 +568,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                     color: Colors.black,
                                   ),
                                   title: const Text(
-                                    'Reschedule Time',
+                                    'Remind Me After',
                                     style: TextStyle(color: Colors.black),
                                   ),
                                   subtitle: Text(
@@ -584,7 +584,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                     color: Colors.black,
                                   ),
                                   title: const Text(
-                                    'Test Notification',
+                                    'Test Notification (Developer Only)',
                                     style: TextStyle(color: Colors.black),
                                   ),
                                   subtitle: const Text(
