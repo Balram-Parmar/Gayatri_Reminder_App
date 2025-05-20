@@ -236,18 +236,18 @@ class _SettingsPageState extends State<SettingsPage> {
         );
         _scheduleNotification(
           sunriseTime,
-          "Sunrise Time:$sunriseTime",
-          "Please Chant The Following Mantra For Morning",
+          "Sunrise Time: ${sunriseTime.hour}:${sunriseTime.minute}",
+          "Please Chant The Gayatri Mantra For Morning And Fill In Your Sadhna",
         );
         _scheduleNotification(
           solarNoonTime,
-          "Solar Noon Time:$solarNoonTime",
-          "Please Chant The Following Mantra For Afternoon",
+          "Solar Noon Time: ${solarNoonTime.hour}:${solarNoonTime.minute}",
+          "Please Chant The Gayatri Mantra For Noon And Fill In Your Sadhna",
         );
         _scheduleNotification(
           sunsetTime,
-          "Sunset Time:$sunsetTime",
-          "Please Chant The Following Mantra For Evening",
+          "Sunset Time: ${sunsetTime.hour}:${sunsetTime.minute}",
+          "Please Chant The Gayatri Mantra For Evening And Fill In Your Sadhna",
         );
       }
       _showSuccessSnackBar('All notifications cancelled and rescheduled');
@@ -520,7 +520,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// Forces reports page to reload data on next visit
+  // Forces reports page to reload data on next visit
   Future<void> _refreshDataInReportsPage() async {
     // This method doesn't need to do anything as the Reports page reads
     // the file every time it's loaded, but we could add additional logic here
@@ -786,21 +786,21 @@ class _SettingsPageState extends State<SettingsPage> {
                                   ),
                                 ),
                                 const Divider(height: 1, color: Colors.black),
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.list,
-                                    color: Colors.black,
-                                  ),
-                                  title: const Text(
-                                    'List Notifications',
-                                    style: TextStyle(color: Colors.black),
-                                  ),
-                                  subtitle: const Text(
-                                    'View all scheduled notifications in console',
-                                    style: TextStyle(color: Colors.black),
-                                  ),
-                                  onTap: _listNotifications,
-                                ),
+                                // ListTile(
+                                //   leading: const Icon(
+                                //     Icons.list,
+                                //     color: Colors.black,
+                                //   ),
+                                //   title: const Text(
+                                //     'List Notifications',
+                                //     style: TextStyle(color: Colors.black),
+                                //   ),
+                                //   subtitle: const Text(
+                                //     'View all scheduled notifications in console',
+                                //     style: TextStyle(color: Colors.black),
+                                //   ),
+                                //   onTap: _listNotifications,
+                                // ),
                                 const Divider(height: 1, color: Colors.black),
                                 ListTile(
                                   leading: const Icon(

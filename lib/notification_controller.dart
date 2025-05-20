@@ -13,6 +13,7 @@ class NotificationController {
   // Default reschedule time in minutes (if not set in settings)
   static const int defaultRescheduleMinutes = 15;
   // File name for settings
+
   static const String settingsFileName = 'settings.json';
 
   /// Get the settings file path
@@ -96,8 +97,8 @@ class NotificationController {
       content: NotificationContent(
         id: receivedAction.id ?? 0, // Use same ID to replace
         channelKey: 'basic_channel',
-        title: receivedAction.title ?? 'Rescheduled Notification',
-        body: receivedAction.body ?? 'This is a rescheduled notification',
+        title: receivedAction.title,
+        body: receivedAction.body,
       ),
       schedule: NotificationCalendar(
         year: scheduleTime.year,

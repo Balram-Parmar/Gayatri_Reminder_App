@@ -3,7 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>	<key>CFBundleDisplayName</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
 	<string>Gayatri Reminder</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -39,13 +40,34 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>	<key>CADisableMinimumFrameDurationOnPhone</key>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Location permissions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when in use to show your current position.</string>
+	<string>This app needs access to location to calculate sunrise and sunset times for your position.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>This app needs access to location when in the background.</string>
+	<string>This app needs access to location to calculate sunrise and sunset times for your position.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location to calculate sunrise and sunset times for your position.</string>
+	
+	<!-- Notification permissions -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- File access permissions -->
+	<key>NSDocumentsDirectoryUsageDescription</key>
+	<string>This app needs access to files to save and load Sadhna data.</string>
+	<key>NSDownloadsDirectoryUsageDescription</key>
+	<string>This app needs access to the downloads directory to save and load Sadhna data.</string>
+	
+	<!-- Photo permissions for file_picker -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires access to the photo library to pick files.</string>
 </dict>
 </plist>

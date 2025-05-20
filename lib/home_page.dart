@@ -418,14 +418,6 @@ class _HomePageState extends State<HomePage> {
                       color: theme.textTheme.titleLarge?.color,
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.refresh,
-                      size: 40,
-                      color: theme.iconTheme.color,
-                    ),
-                    onPressed: _isLoading ? null : _getSunTimesToday,
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
