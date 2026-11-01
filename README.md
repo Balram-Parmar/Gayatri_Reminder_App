@@ -10,9 +10,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.7.2%2B-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](#android-support)
 
-<a href="https://play.google.com/store/apps/details?id=com.hkm.gayatri">
-  <img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="64" />
-</a>
+
 
 </div>
 
